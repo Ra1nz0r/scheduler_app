@@ -45,7 +45,7 @@ func TestDone(t *testing.T) {
 		assert.Empty(t, ret)
 
 		var task Task
-		err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
+		err = db.Get(&task, `SELECT id, date, title, comment, repeat FROM scheduler WHERE id=?`, id)
 		assert.NoError(t, err)
 		now = now.AddDate(0, 0, 3)
 		assert.Equal(t, task.Date, now.Format(`20060102`))

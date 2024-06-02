@@ -1,13 +1,17 @@
 package tests
 
 import (
-	"os"
+	"log"
 	"testing"
 	"time"
 
+	"github.com/ra1nz0r/scheduler_app/internal/config"
+
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/stretchr/testify/assert"
+
+	_ "modernc.org/sqlite"
 )
 
 type Task struct {
@@ -24,16 +28,20 @@ func count(db *sqlx.DB) (int, error) {
 }
 
 func openDB(t *testing.T) *sqlx.DB {
-	dbfile := DBFile
-	envFile := os.Getenv("TODO_DBFILE")
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig("../..")
+	if errLoad != nil {
+		log.Fatal("No .env file found")
+	}
+	dbfile := config.DBFileTest
+	envFile := conf.EnvDatabasePathForTest
 	if len(envFile) > 0 {
 		dbfile = envFile
 	}
-	db, err := sqlx.Connect("sqlite3", dbfile)
+	db, err := sqlx.Connect("sqlite", dbfile)
 	assert.NoError(t, err)
 	return db
 }
-
 func TestDB(t *testing.T) {
 	db := openDB(t)
 	defer db.Close()
@@ -48,9 +56,12 @@ func TestDB(t *testing.T) {
 	assert.NoError(t, err)
 
 	id, err := res.LastInsertId()
+	if err != nil {
+		log.Println(err)
+	}
 
 	var task Task
-	err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
+	err = db.Get(&task, `SELECT id, date, title, comment, repeat FROM scheduler WHERE id=?`, id)
 	assert.NoError(t, err)
 	assert.Equal(t, id, task.ID)
 	assert.Equal(t, `Todo`, task.Title)

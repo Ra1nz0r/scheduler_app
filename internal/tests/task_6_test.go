@@ -2,11 +2,12 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"fmt"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,14 +18,14 @@ func TestTask(t *testing.T) {
 
 	now := time.Now()
 
-	task := task{
+	taskT := task{
 		date:    now.Format(`20060102`),
 		title:   "Созвон в 16:00",
 		comment: "Обсуждение планов",
 		repeat:  "d 5",
 	}
 
-	todo := addTask(t, task)
+	todo := addTask(t, taskT)
 
 	body, err := requestJSON("api/task", nil, http.MethodGet)
 	assert.NoError(t, err)
@@ -42,10 +43,10 @@ func TestTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, todo, m["id"])
-	assert.Equal(t, task.date, m["date"])
-	assert.Equal(t, task.title, m["title"])
-	assert.Equal(t, task.comment, m["comment"])
-	assert.Equal(t, task.repeat, m["repeat"])
+	assert.Equal(t, taskT.date, m["date"])
+	assert.Equal(t, taskT.title, m["title"])
+	assert.Equal(t, taskT.comment, m["comment"])
+	assert.Equal(t, taskT.repeat, m["repeat"])
 }
 
 type fulltask struct {
@@ -103,7 +104,7 @@ func TestEditTask(t *testing.T) {
 		assert.False(t, ok && fmt.Sprint(e) != "")
 
 		var task Task
-		err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
+		err = db.Get(&task, `SELECT id, date, title, comment, repeat FROM scheduler WHERE id=?`, id)
 		assert.NoError(t, err)
 
 		assert.Equal(t, id, strconv.FormatInt(task.ID, 10))

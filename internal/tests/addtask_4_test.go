@@ -3,14 +3,17 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"strconv"
 	"testing"
 	"time"
 
+	"fmt"
+
+	"github.com/ra1nz0r/scheduler_app/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,15 +38,20 @@ func requestJSON(apipath string, values map[string]any, method string) ([]byte, 
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	if len(Token) > 0 {
-		jar, err := cookiejar.New(nil)
-		if err != nil {
-			return nil, err
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig("../..")
+	if errLoad != nil {
+		log.Fatal("No .env file found")
+	}
+	if len(conf.EnvPassHashForTest) > 0 {
+		jar, errJar := cookiejar.New(nil)
+		if errJar != nil {
+			return nil, errJar
 		}
 		jar.SetCookies(req.URL, []*http.Cookie{
 			{
 				Name:  "token",
-				Value: Token,
+				Value: conf.EnvPassHashForTest,
 			},
 		})
 		client.Jar = jar
@@ -136,7 +144,7 @@ func TestAddTask(t *testing.T) {
 			}
 			id := fmt.Sprint(mid)
 
-			err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
+			err = db.Get(&task, `SELECT id, date, title, comment, repeat FROM scheduler WHERE id=?`, id)
 			assert.NoError(t, err)
 			assert.Equal(t, id, strconv.FormatInt(task.ID, 10))
 
@@ -162,7 +170,7 @@ func TestAddTask(t *testing.T) {
 		{"today", "Шмитнес", "", ""},
 	}
 	check()
-	if FullNextDate {
+	if config.FullNextDate {
 		tbl = []task{
 			{"20240129", "Сходить в магазин", "", "w 1,3,5"},
 		}

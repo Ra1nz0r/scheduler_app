@@ -2,11 +2,13 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
+	"fmt"
+
+	"github.com/ra1nz0r/scheduler_app/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +28,7 @@ func addTask(t *testing.T, task task) string {
 
 func getTasks(t *testing.T, search string) []map[string]string {
 	url := "api/tasks"
-	if Search {
+	if config.Search {
 		url += "?search=" + search
 	}
 	body, err := requestJSON(url, nil, http.MethodGet)
@@ -97,7 +99,7 @@ func TestTasks(t *testing.T) {
 	tasks = getTasks(t, "")
 	assert.Equal(t, len(tasks), 6)
 
-	if !Search {
+	if !config.Search {
 		return
 	}
 	tasks = getTasks(t, "УК")
