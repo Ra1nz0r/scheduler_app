@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"os"
@@ -12,26 +13,49 @@ import (
 	"fmt"
 
 	"github.com/ra1nz0r/scheduler_app/internal/config"
+	"github.com/ra1nz0r/scheduler_app/internal/database"
+	hd "github.com/ra1nz0r/scheduler_app/internal/handlers"
 	"github.com/ra1nz0r/scheduler_app/internal/logerr"
 	mwar "github.com/ra1nz0r/scheduler_app/internal/middleware"
 	"github.com/ra1nz0r/scheduler_app/internal/services"
-	tp "github.com/ra1nz0r/scheduler_app/internal/transport"
 
 	"github.com/go-chi/chi"
 )
 
 func Run() {
-	serverLink, boolValue := services.SetServerLink("0.0.0.0:", config.DefaultPort)
-	if boolValue {
-		logerr.InfoMsg("'TODO_PORT' exists in '.env' file. Changing default PORT.")
-	}
-	dbResultPath, boolValue := services.CheckEnvDbVarOnExists(config.DbDefaultPath)
-	if boolValue {
-		logerr.InfoMsg("'TODO_DBFILE' exists in '.env' file. Changing default PATH.")
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig(".")
+	if errLoad != nil {
+		logerr.FatalEvent("cannot load config", errLoad)
 	}
 
+	// Изменяем порт прослушивания по умолчанию, если переменная 'TODO_PORT' существует в '.env'.
+	if len(conf.EnvServerPort) > 0 {
+		logerr.InfoMsg("'TODO_PORT' exists in '.env' file.")
+		logerr.InfoMsg(fmt.Sprintf("Changing default PORT on '%s'.", conf.EnvServerPort))
+		config.DefaultPort = conf.EnvServerPort
+	}
+
+	// Изменяем путь базы данных по умолчанию, если переменная 'TODO_DBFILE' существует в '.env'»'.
+	if len(conf.EnvDatabasePath) > 0 {
+		logerr.InfoMsg("'TODO_DBFILE' exists in '.env' file.")
+		logerr.InfoMsg(fmt.Sprintf("Changing default PATH on '%s'.", conf.EnvDatabasePath))
+		config.DbDefaultPath = conf.EnvDatabasePath
+	}
+
+	// ++++++++++++++++
+	var d config.DB
+	var errOpen error
+	d.Db, errOpen = sql.Open("sqlite", config.DbDefaultPath)
+	if errOpen != nil {
+		logerr.FatalEvent("unable to connect to the database", errOpen)
+	}
+	var q hd.Queries
+	q.Queries = database.New(d.Db)
+	// ++++++++++++++++
+
 	logerr.InfoMsg("Checking DB on exists.")
-	if errCheck := services.CheckDBFileExists(dbResultPath); errCheck != nil {
+	if errCheck := services.CheckDBFileExists(config.DbDefaultPath, d.Db); errCheck != nil {
 		logerr.FatalEvent("cannot check DB on exists", errCheck)
 	}
 
@@ -41,18 +65,22 @@ func Run() {
 	logerr.InfoMsg("Running handlers.")
 	r.Handle("/*", fileServer)
 
-	r.Get("/api/nextdate", tp.NextDateHand)
+	r.Get("/api/nextdate", hd.NextDateHand)
 
-	r.Get("/api/tasks", mwar.CheckAuth(tp.UpcomingTasksWithSearch))
+	r.Get("/api/tasks", mwar.CheckAuth(q.UpcomingTasksWithSearch, conf.EnvPassword))
 
-	r.Post("/api/task/done", mwar.CheckAuth(tp.GeneratedNextDate))
+	r.Post("/api/task/done", mwar.CheckAuth(q.GeneratedNextDate, conf.EnvPassword))
 
-	r.Post("/api/signin", tp.LoginAuth)
+	r.Post("/api/signin", func(w http.ResponseWriter, r *http.Request) {
+		hd.LoginAuth(w, r, conf.EnvPassword)
+	})
 
-	r.Delete("/api/task", mwar.CheckAuth(tp.DeleteTaskScheduler))
-	r.Get("/api/task", mwar.CheckAuth(tp.GetTaskByID))
-	r.Post("/api/task", mwar.CheckAuth(tp.AddSchedulerTask))
-	r.Put("/api/task", mwar.CheckAuth(tp.UpdateTask))
+	r.Delete("/api/task", mwar.CheckAuth(q.DeleteTaskScheduler, conf.EnvPassword))
+	r.Get("/api/task", mwar.CheckAuth(q.GetTaskByID, conf.EnvPassword))
+	r.Post("/api/task", mwar.CheckAuth(q.AddSchedulerTask, conf.EnvPassword))
+	r.Put("/api/task", mwar.CheckAuth(q.UpdateTask, conf.EnvPassword))
+
+	serverLink := config.DefIPAddress + ":" + config.DefaultPort
 
 	logerr.InfoMsg(fmt.Sprintf("Starting server on: '%s'", serverLink))
 

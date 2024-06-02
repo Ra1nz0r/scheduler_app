@@ -2,11 +2,9 @@ package tests
 
 import (
 	"log"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/ra1nz0r/scheduler_app/internal/config"
 
 	"github.com/jmoiron/sqlx"
@@ -30,11 +28,13 @@ func count(db *sqlx.DB) (int, error) {
 }
 
 func openDB(t *testing.T) *sqlx.DB {
-	if err := godotenv.Load("../../.env"); err != nil {
-		t.Error("Error loading .env file")
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig("../..")
+	if errLoad != nil {
+		log.Fatal("No .env file found")
 	}
 	dbfile := config.DBFileTest
-	envFile := os.Getenv("TODO_DBFILE_TEST")
+	envFile := conf.EnvDatabasePathForTest
 	if len(envFile) > 0 {
 		dbfile = envFile
 	}

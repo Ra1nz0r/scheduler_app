@@ -7,14 +7,12 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	"fmt"
 
-	"github.com/joho/godotenv"
 	"github.com/ra1nz0r/scheduler_app/internal/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,11 +38,12 @@ func requestJSON(apipath string, values map[string]any, method string) ([]byte, 
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	if errLoad := godotenv.Load("../../.env"); errLoad != nil {
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig("../..")
+	if errLoad != nil {
 		log.Fatal("No .env file found")
 	}
-	hashSumm := os.Getenv("TODO_HASH_FOR_TEST")
-	if len(hashSumm) > 0 {
+	if len(conf.EnvPassHashForTest) > 0 {
 		jar, errJar := cookiejar.New(nil)
 		if errJar != nil {
 			return nil, errJar
@@ -52,7 +51,7 @@ func requestJSON(apipath string, values map[string]any, method string) ([]byte, 
 		jar.SetCookies(req.URL, []*http.Cookie{
 			{
 				Name:  "token",
-				Value: hashSumm,
+				Value: conf.EnvPassHashForTest,
 			},
 		})
 		client.Jar = jar

@@ -263,7 +263,7 @@ type UpdateTaskParams struct {
 	Comment string `json:"comment"`
 	Repeat  string `json:"repeat"`
 	Search  string `json:"search"`
-	ID      string  `json:"id"`
+	ID      string `json:"id"`
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {

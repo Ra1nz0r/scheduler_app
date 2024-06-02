@@ -12,18 +12,20 @@ import (
 
 	"fmt"
 
-	"github.com/joho/godotenv"
 	"github.com/ra1nz0r/scheduler_app/internal/config"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func getURL(path string) string {
-	if err := godotenv.Load("../../.env"); err != nil {
+	// Загружаем переменные окружения из '.env' файла.
+	// Загружаем переменные окружения из '.env' файла.
+	conf, errLoad := config.LoadConfig("../..")
+	if errLoad != nil {
 		log.Fatal("No .env file found")
 	}
 	port := config.Port
-	envPort := os.Getenv("TODO_PORT")
+	envPort := conf.EnvServerPort
 	if len(envPort) > 0 {
 		if eport, err := strconv.ParseInt(envPort, 10, 32); err == nil {
 			port = int(eport)

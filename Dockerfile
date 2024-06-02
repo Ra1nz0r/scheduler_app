@@ -10,7 +10,7 @@ COPY . .
 
 ENV CGO=0 OS=linux ARCH=amd64
 
-RUN CGO_ENABLED=$CGO GOOS=$OS GOARCH=$ARCH go build -o scheduler_app cmd/app/main.go
+RUN CGO_ENABLED=$CGO GOOS=$OS GOARCH=$ARCH go build -ldflags '-extldflags "-static"' -o scheduler_app cmd/app/main.go
 
 RUN chmod +x scheduler_app && chmod +x run_sqlite.sh && chmod ugo+rwx -R internal/storage_db
 
